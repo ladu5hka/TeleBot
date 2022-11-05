@@ -20,7 +20,7 @@ func Start() {
 
 func CheckError(err error) {
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 }
 
@@ -58,7 +58,7 @@ func findGroup() {
 
 	for faculty := range Faculties {
 		go func(_faculty string) {
-			res := GetHtml(Faculties[_faculty])
+			res := GetHtml(_faculty)
 			doc, err := goquery.NewDocumentFromReader(res.Body)
 			CheckError(err)
 			doc.Find("ul.groups-list>li.groups-list__item").Each(func(i int, item *goquery.Selection) {
@@ -72,7 +72,7 @@ func findGroup() {
 			if atomic.LoadInt32(&check) == 0 {
 				close(ch)
 			}
-		}(faculty)
+		}(Faculties[faculty])
 	}
 
 	for group := range ch {
