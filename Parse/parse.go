@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"sync"
+	"sync/atomic"
 )
 
 var Faculties map[string]string
@@ -52,10 +52,11 @@ func findFaculty() {
 
 func findGroup() {
 	Groups = make(map[string]string)
-	groups := sync.Map{}
-	wg := sync.WaitGroup{}
+
+	ch := make(chan [2]string)
+	check := int32(len(Faculties))
+
 	for faculty := range Faculties {
-		wg.Add(1)
 		go func(_faculty string) {
 			res := GetHtml(Faculties[_faculty])
 			doc, err := goquery.NewDocumentFromReader(res.Body)
@@ -64,17 +65,19 @@ func findGroup() {
 				a := item.Find("a.groups-list__link")
 				title := strings.TrimSpace(a.Text())
 				link, _ := a.Attr("href")
-				groups.Store(title, url+link)
+				ch <- [2]string{title, url + link}
 			})
 			res.Body.Close()
-			wg.Done()
+			atomic.AddInt32(&check, -1)
+			if atomic.LoadInt32(&check) == 0 {
+				close(ch)
+			}
 		}(faculty)
 	}
-	wg.Wait()
-	groups.Range(func(key any, value any) bool {
-		Groups[key.(string)] = value.(string)
-		return true
-	})
+
+	for group := range ch {
+		Groups[group[0]] = group[1]
+	}
 }
 
 type TimeTable []TimeTableDay

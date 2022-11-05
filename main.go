@@ -1,11 +1,11 @@
 package main
 
 import (
-	prs "GolangProjects/Parse"
+	parse "GolangProjects/Parse"
 	"fmt"
 )
 
 func main() {
-	prs.Start()
-	fmt.Println(prs.Groups)
+	parse.Start()
+	fmt.Println(len(parse.Groups))
 }
