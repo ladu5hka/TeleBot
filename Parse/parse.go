@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"sync/atomic"
 )
 
 var Faculties map[string]string
@@ -54,7 +53,9 @@ func findGroup() {
 	Groups = make(map[string]string)
 
 	ch := make(chan [2]string)
-	check := int32(len(Faculties))
+	defer close(ch)
+	check := make(chan bool)
+	defer close(check)
 
 	for faculty := range Faculties {
 		go func(_faculty string) {
@@ -68,15 +69,17 @@ func findGroup() {
 				ch <- [2]string{title, url + link}
 			})
 			res.Body.Close()
-			atomic.AddInt32(&check, -1)
-			if atomic.LoadInt32(&check) == 0 {
-				close(ch)
-			}
+			check <- true
 		}(Faculties[faculty])
 	}
 
-	for group := range ch {
-		Groups[group[0]] = group[1]
+	for i := 0; i < len(Faculties); {
+		select {
+		case group := <-ch:
+			Groups[group[0]] = group[1]
+		case <-check:
+			i++
+		}
 	}
 }
 
